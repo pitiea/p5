@@ -1,7 +1,7 @@
 import json
 from collections import namedtuple, defaultdict, OrderedDict
 from timeit import default_timer as time
-from heapq import heappop, heappush, heapify
+from heapq import heappop, heappush
 
 Recipe = namedtuple('Recipe', ['name', 'check', 'effect', 'cost'])
 
@@ -39,10 +39,22 @@ def make_checker(rule):
     # rule's requirements. This code runs once, when the rules are constructed before
     # the search is attempted.
 
+    need = {}
+
+    if 'Requires' in rule:
+        need.update(rule['Requires'])
+    if 'Consumes' in rule:
+        need.update(rule['Consumes'])
+
     def check(state):
         # This code is called by graph(state) and runs millions of times.
         # Tip: Do something with rule['Consumes'] and rule['Requires'].
-        return True
+
+        for needed_item in need:
+            if needed_item in state and state[needed_item] >= need[needed_item]:
+                return True
+
+        return False
 
     return check
 
@@ -73,6 +85,8 @@ def make_goal_checker(goal):
 
     def is_goal(state):
         # This code is used in the search process and may be called millions of times.
+
+        print("hey: ", state.__str__())
 
         if goal_key in state:
             if goal_num == state[goal_key]:
@@ -175,13 +189,12 @@ if __name__ == '__main__':
 
     # Create a function which checks for the goal
     is_goal = make_goal_checker(Crafting['Goal'])
-    print("sent to is_goal: ", Crafting['Goal'])
 
     # Initialize first state from initial inventory
     state = State({key: 0 for key in Crafting['Items']})
     state.update(Crafting['Initial'])
 
-    print("state: ", state.__str__())
+    print("state: ", state)
 
     # Search for a solution
     resulting_plan = search(graph, state, is_goal, 5, heuristic)
