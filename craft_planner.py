@@ -144,6 +144,7 @@ def search(graph, state, is_goal, limit, heuristic):
     path = [('initial state', 'do a thing')]
 
     initial_state = state
+    print("initial_state: ", initial_state)
 
     while time() - start_time < limit:
         # distance from initial state: key = node, value = distance
@@ -151,7 +152,7 @@ def search(graph, state, is_goal, limit, heuristic):
         # previous node in the list: key = node, value = parent action
         prev = {initial_state: None}
 
-        # heap: [(priority, current_state)] 
+        # heap: [(priority, current_state)]
         heap = [(0, state)]
 
         while heap:
@@ -166,16 +167,19 @@ def search(graph, state, is_goal, limit, heuristic):
                 break
 
             else:
-                for option in graph(state):
-                    print("option: ", option)
+                for action_name, eff, cost in graph(state):
+                    print("option: ", action_name)
+                    print("current_node: ", current_node)
+                    print("dist: ", dist)
                     path_cost = dist[current_node] + 1  # do math here to calculate weight of actions or something
                     est_to_end = heuristic(state)
                     total_estimate = path_cost + est_to_end
+                    next_state = eff(current_node)
 
-                    if option not in dist or path_cost < dist[option]:
-                        prev[option] = current_node
-                        dist[option] = path_cost
-                        heappush(heap, (total_estimate, option)) # instead of option, push option.effect(state)
+                    if next_state not in dist or path_cost < dist[next_state]:
+                        prev[next_state] = action_name
+                        dist[next_state] = path_cost
+                        heappush(heap, (total_estimate, next_state)) # instead of option, push option.effect(state)
 
         return path
 
@@ -213,7 +217,8 @@ if __name__ == '__main__':
     is_goal = make_goal_checker(Crafting['Goal'])
 
     # Initialize first state from initial inventory
-    state = State({key: 0 for key in Crafting['Items']})
+    #state = State({key: 0 for key in Crafting['Items']})
+    state = State()
     state.update(Crafting['Initial'])
 
     print("state: ", state)
