@@ -46,15 +46,29 @@ def make_checker(rule):
     if 'Consumes' in rule:
         need.update(rule['Consumes'])
 
+
     def check(state):
         # This code is called by graph(state) and runs millions of times.
         # Tip: Do something with rule['Consumes'] and rule['Requires'].
 
-        for needed_item in need:
-            if needed_item in state and state[needed_item] >= need[needed_item]:
-                return True
+        if need == {}:
+            return True
 
-        return False
+        bool_buddy = False
+
+        print("need: ", need)
+
+        for needed_item in need:
+            if needed_item in state:
+                print("item: ", needed_item)
+                if state[needed_item] < need[needed_item]:
+                    bool_buddy = False
+                    break
+                bool_buddy = True
+            else:
+                print("not in state: ", needed_item)
+
+        return bool_buddy
 
     return check
 
@@ -64,10 +78,17 @@ def make_effector(rule):
     # new_state given the rule. This code runs once, when the rules are constructed
     # before the search is attempted.
 
+    aftermath = rule['Produces']
+    cost = {}
+    if 'Consumes' in rule:
+        cost = rule['Consumes']
+
+    aftermath.update(cost)
+
     def effect(state):
         # This code is called by graph(state) and runs millions of times
         # Tip: Do something with rule['Produces'] and rule['Consumes'].
-        next_state = None
+        next_state = state.update(aftermath)
         return next_state
 
     return effect
@@ -80,8 +101,6 @@ def make_goal_checker(goal):
     for key in goal:
         goal_key = key
         goal_num = goal[key]
-
-    print("goal is here: ", goal_key, goal_num)
 
     def is_goal(state):
         # This code is used in the search process and may be called millions of times.
@@ -103,6 +122,8 @@ def graph(state):
     # to the given state, and the cost for the rule.
     for r in all_recipes:
         if r.check(state):
+            print("state in graph: ", state)
+            print("r: ", r)
             yield (r.name, r.effect(state), r.cost)
 
 
@@ -119,24 +140,25 @@ def search(graph, state, is_goal, limit, heuristic):
     # representing the path. Each element (tuple) of the list represents a state
     # in the path and the action that took you to this state
 
-    valid = graph(state)
-
     # should be deletable
     path = [('initial state', 'do a thing')]
 
-    while time() - start_time < limit:
-        dist = {'start': 0}
-        prev = {'start': None}
-        visited = []
+    initial_state = state
 
-        heap = [(0, (state, None))]
+    while time() - start_time < limit:
+        # distance from initial state: key = node, value = distance
+        dist = {initial_state: 0}
+        # previous node in the list: key = node, value = parent action
+        prev = {initial_state: None}
+
+        # heap: [(priority, current_state)] 
+        heap = [(0, state)]
 
         while heap:
             current_priority, current_node = heappop(heap)
-            visited.append(current_node)
 
             if is_goal(current_node):
-                path = [current_node]
+                path = [current_node]   # edit so contains tuple of (current_node, action)
                 previous_node = prev[current_node]
                 while previous_node is not None:
                     path.insert(0, previous_node)
@@ -144,7 +166,8 @@ def search(graph, state, is_goal, limit, heuristic):
                 break
 
             else:
-                for option in valid:
+                for option in graph(state):
+                    print("option: ", option)
                     path_cost = dist[current_node] + 1  # do math here to calculate weight of actions or something
                     est_to_end = heuristic(state)
                     total_estimate = path_cost + est_to_end
@@ -152,7 +175,7 @@ def search(graph, state, is_goal, limit, heuristic):
                     if option not in dist or path_cost < dist[option]:
                         prev[option] = current_node
                         dist[option] = path_cost
-                        heappush(heap, (total_estimate, option))
+                        heappush(heap, (total_estimate, option)) # instead of option, push option.effect(state)
 
         return path
 
@@ -181,7 +204,6 @@ if __name__ == '__main__':
     # Build rules
     all_recipes = []
     for name, rule in Crafting['Recipes'].items():
-        print("Rule: ", rule.__str__())
         checker = make_checker(rule)
         effector = make_effector(rule)
         recipe = Recipe(name, checker, effector, rule['Time'])
