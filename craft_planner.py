@@ -56,17 +56,14 @@ def make_checker(rule):
 
         bool_buddy = False
 
-        print("need: ", need)
-
         for needed_item in need:
             if needed_item in state:
-                print("item: ", needed_item)
                 if state[needed_item] < need[needed_item]:
                     bool_buddy = False
                     break
                 bool_buddy = True
             else:
-                print("not in state: ", needed_item)
+                break
 
         return bool_buddy
 
@@ -78,17 +75,20 @@ def make_effector(rule):
     # new_state given the rule. This code runs once, when the rules are constructed
     # before the search is attempted.
 
-    aftermath = rule['Produces']
+    products = rule['Produces']
     cost = {}
     if 'Consumes' in rule:
         cost = rule['Consumes']
 
-    aftermath.update(cost)
-
     def effect(state):
         # This code is called by graph(state) and runs millions of times
         # Tip: Do something with rule['Produces'] and rule['Consumes'].
-        next_state = state.update(aftermath)
+        next_state = state.copy()
+        for item in products:
+            next_state[item] += products[item]
+        for item in cost:
+            next_state[item] -= cost[item]
+
         return next_state
 
     return effect
@@ -104,8 +104,6 @@ def make_goal_checker(goal):
 
     def is_goal(state):
         # This code is used in the search process and may be called millions of times.
-
-        print("hey: ", state.__str__())
 
         if goal_key in state:
             if goal_num == state[goal_key]:
@@ -143,7 +141,7 @@ def search(graph, state, is_goal, limit, heuristic):
     # should be deletable
     path = [('initial state', 'do a thing')]
 
-    initial_state = state
+    initial_state = state.copy()
     print("initial_state: ", initial_state)
 
     while time() - start_time < limit:
@@ -153,13 +151,13 @@ def search(graph, state, is_goal, limit, heuristic):
         prev = {initial_state: None}
 
         # heap: [(priority, current_state)]
-        heap = [(0, state)]
+        heap = [(0, initial_state)]
 
         while heap:
             current_priority, current_node = heappop(heap)
 
             if is_goal(current_node):
-                path = [current_node]   # edit so contains tuple of (current_node, action)
+                path = [(current_node, None)]   # edit so contains tuple of (current_node, action)
                 previous_node = prev[current_node]
                 while previous_node is not None:
                     path.insert(0, previous_node)
@@ -167,17 +165,17 @@ def search(graph, state, is_goal, limit, heuristic):
                 break
 
             else:
-                for action_name, eff, cost in graph(state):
+                print("current_node before graph but after isgoal: ", current_node)
+                for action_name, next_state, cost in graph(current_node.copy()):
                     print("option: ", action_name)
                     print("current_node: ", current_node)
                     print("dist: ", dist)
-                    path_cost = dist[current_node] + 1  # do math here to calculate weight of actions or something
+                    path_cost = dist[current_node] + cost  # do math here to calculate weight of actions or something
                     est_to_end = heuristic(state)
                     total_estimate = path_cost + est_to_end
-                    next_state = eff(current_node)
 
                     if next_state not in dist or path_cost < dist[next_state]:
-                        prev[next_state] = action_name
+                        prev[next_state] = (current_node, action_name)
                         dist[next_state] = path_cost
                         heappush(heap, (total_estimate, next_state)) # instead of option, push option.effect(state)
 
@@ -217,14 +215,19 @@ if __name__ == '__main__':
     is_goal = make_goal_checker(Crafting['Goal'])
 
     # Initialize first state from initial inventory
-    #state = State({key: 0 for key in Crafting['Items']})
-    state = State()
+    state = State({key: 0 for key in Crafting['Items']})
+    # state = State()
     state.update(Crafting['Initial'])
 
-    print("state: ", state)
+    x = 1
+    y = True
+    if x == y:
+        print("oh good")
+    else:
+        print("oh no")
 
     # Search for a solution
-    resulting_plan = search(graph, state, is_goal, 5, heuristic)
+    resulting_plan = search(graph, state, is_goal, 50, heuristic)
 
     if resulting_plan:
         # Print resulting plan
