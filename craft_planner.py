@@ -1,7 +1,9 @@
 import json
+import math
 from collections import namedtuple, defaultdict, OrderedDict
 from timeit import default_timer as time
 from heapq import heappop, heappush
+
 
 Recipe = namedtuple('Recipe', ['name', 'check', 'effect', 'cost'])
 
@@ -120,13 +122,24 @@ def graph(state):
     # to the given state, and the cost for the rule.
     for r in all_recipes:
         if r.check(state):
-            print("state in graph: ", state)
-            print("r: ", r)
+            #print("state in graph: ", state)
+            #print("r: ", r)
             yield (r.name, r.effect(state), r.cost)
-
+        else:#if the rule in not in the state, meaning it is not valid, set its cost to infinity
+        	inf_cost = math.inf #change cost of invalid path to infinity
+        	#state[r]
+        	#change the invalid recipe time = inf_cost
+        	#set the rule to have the infinite cost
 
 def heuristic(state):
     # Implement your heuristic here!
+
+    #can also look at just the action, and see how the action rekates to the goal.
+    
+    # loop through all the "requires", and if we already have one in state, return infinity. Example, if we have a pickaxe, we dont need another
+
+    #can also check if they produce the same thing, and choose the lowest cost. setting the 
+
     return 0
 
 
@@ -142,7 +155,7 @@ def search(graph, state, is_goal, limit, heuristic):
     path = [('initial state', 'do a thing')]
 
     initial_state = state.copy()
-    print("initial_state: ", initial_state)
+    #print("initial_state: ", initial_state)
 
     while time() - start_time < limit:
         # distance from initial state: key = node, value = distance
@@ -165,11 +178,11 @@ def search(graph, state, is_goal, limit, heuristic):
                 break
 
             else:
-                print("current_node before graph but after isgoal: ", current_node)
+                #print("current_node before graph but after isgoal: ", current_node)
                 for action_name, next_state, cost in graph(current_node.copy()):
-                    print("option: ", action_name)
-                    print("current_node: ", current_node)
-                    print("dist: ", dist)
+                    #print("option: ", action_name)
+                    #print("current_node: ", current_node)
+                    #print("dist: ", dist)
                     path_cost = dist[current_node] + cost  # do math here to calculate weight of actions or something
                     est_to_end = heuristic(state)
                     total_estimate = path_cost + est_to_end
@@ -192,13 +205,13 @@ if __name__ == '__main__':
         Crafting = json.load(f)
 
     # # List of items that can be in your inventory:
-    print('All items:', Crafting['Items'])
+    #print('All items:', Crafting['Items'])
     #
     # # List of items in your initial inventory with amounts:
-    print('Initial inventory:', Crafting['Initial'])
+    #print('Initial inventory:', Crafting['Initial'])
     #
     # # List of items needed to be in your inventory at the end of the plan:
-    print('Goal:', Crafting['Goal'])
+    #print('Goal:', Crafting['Goal'])
     #
     # # Dict of crafting recipes (each is a dict):
     # print('Example recipe:','craft stone_pickaxe at bench ->',Crafting['Recipes']['craft stone_pickaxe at bench'])
