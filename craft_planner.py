@@ -2,6 +2,7 @@ import json
 from collections import namedtuple, defaultdict, OrderedDict
 from timeit import default_timer as time
 from heapq import heappop, heappush
+from math import inf
 
 Recipe = namedtuple('Recipe', ['name', 'check', 'effect', 'cost'])
 
@@ -39,6 +40,8 @@ def make_checker(rule):
     # rule's requirements. This code runs once, when the rules are constructed before
     # the search is attempted.
 
+    tools = ["bench", "cart", "furnace", "iron_axe", "iron_pickaxe",
+             "stone_axe", "stone_pickaxe", "wooden_axe", "wooden_pickaxe"]
     need = {}
 
     if 'Requires' in rule:
@@ -46,10 +49,13 @@ def make_checker(rule):
     if 'Consumes' in rule:
         need.update(rule['Consumes'])
 
-
     def check(state):
         # This code is called by graph(state) and runs millions of times.
         # Tip: Do something with rule['Consumes'] and rule['Requires'].
+
+        for item in rule['Produces']:
+            if item in state and item in tools:
+                rule['Time'] = inf
 
         if need == {}:
             return True
@@ -61,9 +67,9 @@ def make_checker(rule):
                 if state[needed_item] < need[needed_item]:
                     bool_buddy = False
                     break
-                bool_buddy = True
+                else:
+                    bool_buddy = True
             else:
-                state[needed_item]["Time"] = math.inf                   # if the rule does not have the need item, set that cost to inf
                 break
 
         return bool_buddy
@@ -121,13 +127,14 @@ def graph(state):
     # to the given state, and the cost for the rule.
     for r in all_recipes:
         if r.check(state):
-            print("state in graph: ", state)
-            print("r: ", r)
             yield (r.name, r.effect(state), r.cost)
 
 
 def heuristic(state):
     # Implement your heuristic here!
+
+
+
     return 0
 
 
@@ -168,9 +175,6 @@ def search(graph, state, is_goal, limit, heuristic):
             else:
                 print("current_node before graph but after isgoal: ", current_node)
                 for action_name, next_state, cost in graph(current_node.copy()):
-                    print("option: ", action_name)
-                    print("current_node: ", current_node)
-                    print("dist: ", dist)
                     path_cost = dist[current_node] + cost  # do math here to calculate weight of actions or something
                     est_to_end = heuristic(state)
                     total_estimate = path_cost + est_to_end
@@ -219,13 +223,6 @@ if __name__ == '__main__':
     state = State({key: 0 for key in Crafting['Items']})
     # state = State()
     state.update(Crafting['Initial'])
-
-    x = 1
-    y = True
-    if x == y:
-        print("oh good")
-    else:
-        print("oh no")
 
     # Search for a solution
     resulting_plan = search(graph, state, is_goal, 50, heuristic)
