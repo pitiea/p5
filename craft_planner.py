@@ -150,13 +150,12 @@ def search(graph, state, is_goal, limit, heuristic):
     path = [('initial state', 'do a thing')]
 
     initial_state = state.copy()
-    print("initial_state: ", initial_state)
 
     while time() - start_time < limit:
         # distance from initial state: key = node, value = distance
         dist = {initial_state: 0}
         # previous node in the list: key = node, value = parent action
-        prev = {initial_state: None}
+        prev = {initial_state: (None, None)}
 
         # heap: [(priority, current_state)]
         heap = [(0, initial_state)]
@@ -166,14 +165,13 @@ def search(graph, state, is_goal, limit, heuristic):
 
             if is_goal(current_node):
                 path = [(current_node, None)]   # edit so contains tuple of (current_node, action)
-                previous_node = prev[current_node]
-                while previous_node is not None:
-                    path.insert(0, previous_node)
-                    previous_node = prev[previous_node]
+                previous_node, previous_action = prev[current_node]
+                while previous_action is not None:
+                    path.insert(0, (previous_node, previous_action))
+                    previous_node, previous_action = prev[previous_node]
                 break
 
             else:
-                print("current_node before graph but after isgoal: ", current_node)
                 for action_name, next_state, cost in graph(current_node.copy()):
                     path_cost = dist[current_node] + cost  # do math here to calculate weight of actions or something
                     est_to_end = heuristic(state)
