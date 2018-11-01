@@ -63,6 +63,7 @@ def make_checker(rule):
                     break
                 bool_buddy = True
             else:
+                state[needed_item]["Time"] = math.inf                   # if the rule does not have the need item, set that cost to inf
                 break
 
         return bool_buddy
