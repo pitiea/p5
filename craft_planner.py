@@ -40,28 +40,54 @@ def make_checker(rule):
     # rule's requirements. This code runs once, when the rules are constructed before
     # the search is attempted.
 
-    tools = ["bench", "cart", "furnace", "iron_axe", "iron_pickaxe",
-             "stone_axe", "stone_pickaxe", "wooden_axe", "wooden_pickaxe"]
     need = {}
+    one_max = ["bench", "cart", "furnace", "iron_axe", "iron_pickaxe", "stone_axe", "stone_pickaxe", "wooden_axe", "wooden_pickaxe", "wood", "ore", "coal"]
+    two_max = "stick"
+    four_max = "plank"
+    six_max = "ingot"
+    eight_max = "cobble"
+
+    max_for_each = {"plank": 4, "cobble": 8, "ingot": 6, "stick": 2}
+
+
 
     if 'Requires' in rule:
         need.update(rule['Requires'])
     if 'Consumes' in rule:
         need.update(rule['Consumes'])
 
+
+    for x in rule['Produces']:
+         product = x
+
     def check(state):
         # This code is called by graph(state) and runs millions of times.
         # Tip: Do something with rule['Consumes'] and rule['Requires'].
 
-        for item in rule['Produces']:
-            if item in state and item in tools:
-                rule['Time'] = inf
-
         if need == {}:
             return True
+        +
+        for item in state:
+            if state[item] > 1 and item in one_max:
+                return False
+            
+        '''
+        for item in state:
+            print(item)
+            if item == "wood":
+                print("---------------------------WOOOOOOOOOOOOD")
+            print("state below")
+            print(state)
+            print('state[item]: ', state[item])
+            if item in max_for_each:
+                print('max_for_each[item]: ', max_for_each[item])
+                if max_for_each[item] <= state[item]:
+                    return False
+        '''
 
         bool_buddy = False
 
+        # for each item we need, check if we have it in this state; if we don't, we can't use this recipe
         for needed_item in need:
             if needed_item in state:
                 if state[needed_item] < need[needed_item]:
@@ -129,13 +155,67 @@ def graph(state):
         if r.check(state):
             yield (r.name, r.effect(state), r.cost)
 
+    """
+    #must consider consumes and requires
+    def find(item) #will take in an item, and return what it takes to produce that item
+        goal = Crafting['Goal']
 
-def heuristic(state):
+        items_to_make_goal = []
+
+        for neededItem in goal['Consumes']: 
+            if neededItem in state and goal["Consumes"][neededItem] > state[neededItem] or neededItem not in state: #if we do not have enough of the item, or we do not have it at all, store and recurse on it
+                items_to_make_goal.append(neededItem);
+                find(neededItem)
+
+        for neededTool in goal["Requires"]
+            if neededTool not in state
+                find(neededTool)
+    """
+
+
+def heuristic(state,recipe_name):
     # Implement your heuristic here!
 
+    # if this state contains the goal, it is good: return 0
+    goal = Crafting['Goal']
+    for key in goal:
+        if key in state:
+            return 0
+
+    counter = 0
+    needed_items = {}
+    tools = ["bench", "cart", "furnace", "iron_axe", "iron_pickaxe", "stone_axe", "stone_pickaxe", "wooden_axe", "wooden_pickaxe"]
+
+    # if this state contains more than one of a tool, it is useless: return infinity   
+    for item in state:
+        if state[item] > 1 and item in tools:
+            return inf
+
+    # if we need a thing and didn't get it, that's bad: return number of items we need and don't have
+    for item in Crafting['Recipes']:
+        for key in Crafting['Recipes'][item]['Produces']:
+            if key in goal.keys():
+                needed_items.update(Crafting['Recipes'][item]['Requires'])
+                needed_items.update(Crafting['Recipes'][item]['Consumes'])
+    for need in needed_items:
+        if need not in state:
+            counter += 1
+    return counter
+    
 
 
-    return 0
+    """
+    for prod in Crafting['Recipes'][recipe_name]['Produces']:
+        if prod in needed_items: #and  needed_items[prod] + prod != 0:
+            return 0
+    return 10
+
+    goal = Crafting['Goal']
+    for key in goal:
+        if key in state:
+            return 0
+    return 5
+    """
 
 
 def search(graph, state, is_goal, limit, heuristic):
@@ -148,6 +228,7 @@ def search(graph, state, is_goal, limit, heuristic):
 
     # should be deletable
     path = [('initial state', 'do a thing')]
+    visited = 0
 
     initial_state = state.copy()
 
@@ -162,9 +243,10 @@ def search(graph, state, is_goal, limit, heuristic):
 
         while heap:
             current_priority, current_node = heappop(heap)
+            visited += 1
 
             if is_goal(current_node):
-                path = [(current_node, None)]   # edit so contains tuple of (current_node, action)
+                path = [(current_node, 'Complete!')]   # edit so contains tuple of (current_node, action)
                 previous_node, previous_action = prev[current_node]
                 while previous_action is not None:
                     path.insert(0, (previous_node, previous_action))
@@ -174,7 +256,7 @@ def search(graph, state, is_goal, limit, heuristic):
             else:
                 for action_name, next_state, cost in graph(current_node.copy()):
                     path_cost = dist[current_node] + cost  # do math here to calculate weight of actions or something
-                    est_to_end = heuristic(state)
+                    est_to_end = heuristic(state,action_name)
                     total_estimate = path_cost + est_to_end
 
                     if next_state not in dist or path_cost < dist[next_state]:
@@ -182,11 +264,18 @@ def search(graph, state, is_goal, limit, heuristic):
                         dist[next_state] = path_cost
                         heappush(heap, (total_estimate, next_state)) # instead of option, push option.effect(state)
 
+            if time() - start_time > limit:
+                break
+
+        print('Compute time: ', time() - start_time, 'seconds.')
+        print('Goal cost: ', dist[current_node], '.')
+        print('States visited: ', visited, '.')
         return path
 
     # Failed to find a path
     print(time() - start_time, 'seconds.')
     print("Failed to find a path from", state, 'within time limit.')
+    print('States visited: ', visited, '.')
     return None
 
 
@@ -223,7 +312,7 @@ if __name__ == '__main__':
     state.update(Crafting['Initial'])
 
     # Search for a solution
-    resulting_plan = search(graph, state, is_goal, 50, heuristic)
+    resulting_plan = search(graph, state, is_goal, 30, heuristic)
 
     if resulting_plan:
         # Print resulting plan
