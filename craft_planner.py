@@ -41,24 +41,14 @@ def make_checker(rule):
     # the search is attempted.
 
     need = {}
-    one_max = ["bench", "cart", "furnace", "iron_axe", "iron_pickaxe", "stone_axe", "stone_pickaxe", "wooden_axe", "wooden_pickaxe", "wood", "ore", "coal"]
-    two_max = "stick"
-    four_max = "plank"
-    six_max = "ingot"
-    eight_max = "cobble"
-
-    max_for_each = {"plank": 4, "cobble": 8, "ingot": 6, "stick": 2}
-
-
-
     if 'Requires' in rule:
         need.update(rule['Requires'])
     if 'Consumes' in rule:
         need.update(rule['Consumes'])
 
 
-    for x in rule['Produces']:
-         product = x
+    #for x in rule['Produces']:
+         #product = x
 
     def check(state):
         # This code is called by graph(state) and runs millions of times.
@@ -66,27 +56,47 @@ def make_checker(rule):
 
         if need == {}:
             return True
-        +
+        
+        one_max = ["bench","furnace","cart", "iron_axe", "iron_pickaxe", "stone_axe", "stone_pickaxe", "wooden_axe", "wooden_pickaxe","coal","ore", "wood"]
+        max_items = {"stick":8,"ingot":6,"plank":4,"cobble":8,}
+
+        #hands, what you cannot make.
+        level_0 = { "cart":1, "furnace":1, "iron_axe":1, "iron_pickaxe":1, "stone_axe":1, "stone_pickaxe":1, "ore":1, "coal":1, "cobble":1,"ingot":1,"rail":1}
+        #wooden pickaxe, what you cannot make
+        level_1 = { "cart":1, "furnace":1, "iron_axe":1, "iron_pickaxe":1, "stone_axe":1, "stone_pickaxe":1, "wooden_axe":1,  "ore":1, "coal":1,"rail":1}
+        #stone pickaxe, what you cannot make
+        level_2 = { "cart":1, "iron_axe":1, "iron_pickaxe":1,"rail":1}
+        #iron pickaxe can make everything
         for item in state:
             if state[item] > 1 and item in one_max:
+                #if item != "wood":
+                    #print(rule)
+                    #rule['Time'] = 5
                 return False
-            
-        '''
-        for item in state:
-            print(item)
-            if item == "wood":
-                print("---------------------------WOOOOOOOOOOOOD")
-            print("state below")
-            print(state)
-            print('state[item]: ', state[item])
-            if item in max_for_each:
-                print('max_for_each[item]: ', max_for_each[item])
-                if max_for_each[item] <= state[item]:
+            else:
+                if item in max_items and state[item] > max_items[item]:
                     return False
-        '''
+        #print(state)
+        #if state["wooden_pickaxe"] is 1:
+            #print("-------------- wood pick")
+
+
+        if state["wooden_pickaxe"] is not 1:
+            for item in need:
+                if item in level_0:
+                    return False
+
+        elif state["wooden_pickaxe"] is 1 and state["stone_pickaxe"] is not 1:
+            for item in need:
+                if item in level_1:
+                    return False
+        elif state["stone_pickaxe"] is 1 and state["iron_pickaxe"] is not 1:
+            for item in need:
+                if item in level_2:
+                    return False
 
         bool_buddy = False
-
+ 
         # for each item we need, check if we have it in this state; if we don't, we can't use this recipe
         for needed_item in need:
             if needed_item in state:
@@ -94,6 +104,7 @@ def make_checker(rule):
                     bool_buddy = False
                     break
                 else:
+                    rule['Time'] = 5
                     bool_buddy = True
             else:
                 break
@@ -131,18 +142,18 @@ def make_goal_checker(goal):
     # Implement a function that returns a function which checks if the state has
     # met the goal criteria. This code runs once, before the search is attempted.
 
-    for key in goal:
-        goal_key = key
-        goal_num = goal[key]
 
     def is_goal(state):
         # This code is used in the search process and may be called millions of times.
+        for key in goal:
+            goal_key = key
+            goal_num = goal[key]
 
-        if goal_key in state:
-            if goal_num == state[goal_key]:
-                return True
+            if goal_key in state:
+                if goal_num > state[goal_key]:
+                    return False
 
-        return False
+        return True
 
     return is_goal
 
@@ -155,68 +166,31 @@ def graph(state):
         if r.check(state):
             yield (r.name, r.effect(state), r.cost)
 
-    """
-    #must consider consumes and requires
-    def find(item) #will take in an item, and return what it takes to produce that item
-        goal = Crafting['Goal']
-
-        items_to_make_goal = []
-
-        for neededItem in goal['Consumes']: 
-            if neededItem in state and goal["Consumes"][neededItem] > state[neededItem] or neededItem not in state: #if we do not have enough of the item, or we do not have it at all, store and recurse on it
-                items_to_make_goal.append(neededItem);
-                find(neededItem)
-
-        for neededTool in goal["Requires"]
-            if neededTool not in state
-                find(neededTool)
-    """
 
 
 def heuristic(state,recipe_name):
     # Implement your heuristic here!
+    #print(recipe_name)
 
-    # if this state contains the goal, it is good: return 0
-    goal = Crafting['Goal']
-    for key in goal:
-        if key in state:
-            return 0
 
-    counter = 0
-    needed_items = {}
-    tools = ["bench", "cart", "furnace", "iron_axe", "iron_pickaxe", "stone_axe", "stone_pickaxe", "wooden_axe", "wooden_pickaxe"]
+    need = {}
+    if 'Requires' in Crafting['Recipes'][recipe_name]:
+        need.update(Crafting['Recipes'][recipe_name]['Requires'])
+    if 'Produces' in Crafting['Recipes'][recipe_name]:
+        need.update(Crafting['Recipes'][recipe_name]['Produces'])
 
-    # if this state contains more than one of a tool, it is useless: return infinity   
+
+
+    one_max = ["bench","furnace","cart", "iron_axe", "iron_pickaxe", "stone_axe", "stone_pickaxe", "wooden_axe", "wooden_pickaxe","coal","ore", "wood"]
+    max_items = {"stick":8,"ingot":6,"plank":4,"cobble":8,}
+
     for item in state:
-        if state[item] > 1 and item in tools:
+        if state[item] > 1 and item in one_max:
             return inf
-
-    # if we need a thing and didn't get it, that's bad: return number of items we need and don't have
-    for item in Crafting['Recipes']:
-        for key in Crafting['Recipes'][item]['Produces']:
-            if key in goal.keys():
-                needed_items.update(Crafting['Recipes'][item]['Requires'])
-                needed_items.update(Crafting['Recipes'][item]['Consumes'])
-    for need in needed_items:
-        if need not in state:
-            counter += 1
-    return counter
-    
-
-
-    """
-    for prod in Crafting['Recipes'][recipe_name]['Produces']:
-        if prod in needed_items: #and  needed_items[prod] + prod != 0:
-            return 0
-    return 10
-
-    goal = Crafting['Goal']
-    for key in goal:
-        if key in state:
-            return 0
-    return 5
-    """
-
+        else:
+            if item in max_items and state[item] > max_items[item]:
+                return inf
+    return 0
 
 def search(graph, state, is_goal, limit, heuristic):
     start_time = time()
@@ -229,7 +203,6 @@ def search(graph, state, is_goal, limit, heuristic):
     # should be deletable
     path = [('initial state', 'do a thing')]
     visited = 0
-
     initial_state = state.copy()
 
     while time() - start_time < limit:
@@ -256,7 +229,7 @@ def search(graph, state, is_goal, limit, heuristic):
             else:
                 for action_name, next_state, cost in graph(current_node.copy()):
                     path_cost = dist[current_node] + cost  # do math here to calculate weight of actions or something
-                    est_to_end = heuristic(state,action_name)
+                    est_to_end = heuristic(next_state,action_name)
                     total_estimate = path_cost + est_to_end
 
                     if next_state not in dist or path_cost < dist[next_state]:
@@ -284,13 +257,14 @@ if __name__ == '__main__':
         Crafting = json.load(f)
 
     # # List of items that can be in your inventory:
-    print('All items:', Crafting['Items'])
+    #print('All items:', Crafting['Items'])
     #
     # # List of items in your initial inventory with amounts:
-    print('Initial inventory:', Crafting['Initial'])
+    #print('Initial inventory:', Crafting['Initial'])
     #
     # # List of items needed to be in your inventory at the end of the plan:
     print('Goal:', Crafting['Goal'])
+
     #
     # # Dict of crafting recipes (each is a dict):
     # print('Example recipe:','craft stone_pickaxe at bench ->',Crafting['Recipes']['craft stone_pickaxe at bench'])
